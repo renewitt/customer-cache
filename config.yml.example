@@ -1,0 +1,24 @@
+---
+rabbitmq_host: "localhost:5672"
+rabbitmq_user: guest
+rabbitmq_password: guest
+# Redis DB instance
+redis_db: 0
+redis_host: 127.0.0.1
+redis_port: 6379
+# how many seconds to wait between publishes
+order_frequency: 20
+# maximum amount of orders allowed in a set
+order_size: 10
+# how many seconds customers in cooldown must wait
+cooldown_time: 300
+# how many seconds each start is valid for
+expiry_time: 60
+# consumer bindings to RabbitMQ
+consumer_bindings:
+  exchange: pi
+  input_queue: pi
+  keys:
+    - "start"
+    - "stop"
+  queue_size: 10000
