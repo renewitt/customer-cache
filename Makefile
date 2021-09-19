@@ -4,7 +4,13 @@ install:
 	python3 -m pip install -e .
 
 build:
+	docker-compose build
+
+dist:
 	python setup.py sdist
 
-data:
-	docker build -t generate-pi-data data/
+run:
+	docker-compose up
+
+stop:
+	docker-compose down

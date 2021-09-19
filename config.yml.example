@@ -16,8 +16,8 @@ cooldown_time: 300
 expiry_time: 60
 # consumer bindings to RabbitMQ
 consumer_bindings:
-  exchange: pi
-  input_queue: pi
+  exchange: mpi
+  input_queue: mpi
   keys:
     - "start"
     - "stop"

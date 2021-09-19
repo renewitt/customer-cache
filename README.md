@@ -2,8 +2,8 @@
 Keep track of active customers and their transactions
 
 ## Configure
+You do not have to do this step, if you intend to use the Docker environment.
 ```bash
-# copy and update config parameters
 cp config.yml.example config.yml 
 ```
 

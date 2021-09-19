@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import amqp
 import faker
 import random
@@ -26,24 +27,24 @@ def publish_order(channel, headers):
     key = random.choice(["start", "stop"])
     print(f'Publishing message. Key: {key},  Headers: {headers}')
     msg = amqp.Message(application_headers=headers)
-    channel.basic_publish(msg, exchange="pi", routing_key=key)
+    channel.basic_publish(msg, exchange="mpi", routing_key=key)
 
 def publish_start(channel, headers):
     print(f'Resending previous message.  Key: start, Headers: {headers}')
     msg = amqp.Message(application_headers=headers)
-    channel.basic_publish(msg, exchange="pi", routing_key="start")
+    channel.basic_publish(msg, exchange="mpi", routing_key="start")
 
 def run():
     """ Run the main loop. """
     customer_data = generate_customer_data()
 
-    with amqp.Connection('localhost:5672') as c:
+    with amqp.Connection('rabbitmq:5672') as c:
         ch = c.channel()
         args = {
             "alternate-exchange": "dead-letter"
         }
         ch.exchange_declare(
-            "pi",       # exchange name
+            "mpi",       # exchange name
             "direct",   # exchange type,
             durable=True,
             auto_delete=False,
