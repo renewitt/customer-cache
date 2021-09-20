@@ -32,6 +32,10 @@ class Pi:
         """ Connect to RabbitMQ and Redis. """
         self.logger.info("Starting up PI")
         self.rabbit.init_consumer()
+
+        # Add a timer to our RabbitMQ consumer. When the timer expires,
+        # the method passed into this function will be called.
+        self.rabbit.add_timer('pi_manifest', self.order_freq, self.publish_manifest)
         self.rabbit.consume(self.message_callback)
 
     def stop(self):
@@ -43,4 +47,10 @@ class Pi:
         """ Callback to pass to RabbitMQ consume. """
         headers = message.application_headers
         routing_key = message.delivery_info['routing_key']
-        print(f"Message received: {routing_key}, {headers}")
+        self.logger.info(f"Message received: {routing_key}, {headers}")
+
+    def publish_manifest(self):
+        """
+        This method exports and publishes the current manifest.
+        """
+        self.logger.info(f'Publishing manifest')

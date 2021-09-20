@@ -1,12 +1,12 @@
 [x] Get project to basic installable
 [x] Split up functionality provided by other magic libraries so its easy to break up when we bring it in
 [ ] Update README for current config and install
-[ ] Add testing scripts for generating publish of data
+[x] Add testing scripts for generating publish of data
     - would be nice to containerise this so we could just run `make data` and it will spit stuff into Rabbit
     - Later we can roll this into the docker compose and just `make run` to spin up Rabbit, Redis, publisher & PI
-[ ] Get timed loop working so we can yeet threading
-[ ] Figure out how to add timers to consume instance so we can use this and port it into mrabbit
-[ ] Set up Makefile and `docker-compose` to spin up containers for Redis and Rabbit
+[x] Get timed loop working so we can yeet threading
+[x] Figure out how to add timers to consume instance so we can use this and port it into mrabbit
+[x] Set up Makefile and `docker-compose` to spin up containers for Redis and Rabbit
 [ ] Clean up config by using argparse and config file
 [ ] Pass config options for containers on startup
 [ ] Figure out a sensible way to auth redis, plus how we can easily do this in containers
@@ -15,3 +15,4 @@
     - What would this look like on the PaaS?
 [ ] Figure out and document the best way to handle the caching.
 [ ] Write tests.
+[ ] Introduce a max consume window by exiting consume after the timer expires
