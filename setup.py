@@ -9,6 +9,9 @@ setuptools.setup(
         "redis",
         "pyyaml"
     ],
+    packages=setuptools.find_packages(
+        exclude=['tests']
+    ),
     entry_points={
         'console_scripts': [
             'mpi = mpi.__main__:main'

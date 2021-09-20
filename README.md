@@ -17,3 +17,9 @@ make install
 ```
 mpi
 ```
+
+## Tests
+To run the tests:
+```
+make test
+```

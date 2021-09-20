@@ -29,7 +29,8 @@ class Timer:
     def run(self):
         """
         Checks if the timer is due, and if it is, calls the method belonging to the
-        timer, and updates the last_run time.
+        timer, and updates the last_run time. Errors raised by the timer method are
+        raised and should be handled by the client.
         """
         # we could also set a window here, so if we're within range of the timer,
         # just run it. This could be proportional to the interval to ensure it scales
@@ -173,8 +174,11 @@ class Rabbit:
     def delete_timer(self, name):
         """
         Delete the associated timer from the list of tracked timers.
+        This function should be safe to call, even if the named timer
+        does not exist.
 
         :param name: name of the timer instance to remove.
         """
-        timer = self.timers.pop(name)
-        self.logger.info(f'Deleted tracked timer {name}: {timer}')
+        if name in self.timers.keys():
+            timer = self.timers.pop(name)
+            self.logger.info(f'Deleted tracked timer {name}: {timer}')
