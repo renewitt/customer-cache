@@ -48,6 +48,7 @@ def create_cache(conn):
         phone TEXT PRIMARY KEY,
         ip_addr TEXT NOT NULL,
         region TEXT NOT NULL,
+        guid TEXT NOT NULL,
         description TEXT NOT NULL,
         date_created INTEGER NOT NULL,
         last_active INTEGER NOT NULL,
@@ -69,6 +70,7 @@ def select_record(conn, phone):
             phone,
             ip_addr,
             region,
+            guid,
             description,
             last_active,
             date_created,
@@ -79,7 +81,7 @@ def select_record(conn, phone):
     """, {'phone': phone})
     return c.fetchone()
 
-def insert_record(conn, phone, ip_addr, region, desc):
+def insert_record(conn, phone, ip_addr, region, guid, desc):
     """
     Insert a record into the cache. Customers are uniquely identified by their
     phone number.
@@ -88,6 +90,7 @@ def insert_record(conn, phone, ip_addr, region, desc):
     :param phone: Customer's phone number.
     :param ip_addr: Customer's IP address
     :param region: Region this customer is in
+    :param guid: the unique identifier for this customer session (BH)
     :param desc: Customer description
 
     :returns: the number of modified rows
@@ -97,6 +100,7 @@ def insert_record(conn, phone, ip_addr, region, desc):
         phone,
         ip_addr,
         region,
+        guid,
         date_created,
         last_active,
         description
@@ -104,19 +108,19 @@ def insert_record(conn, phone, ip_addr, region, desc):
         :phone,
         :ip_addr,
         :region,
+        :guid,
         :date_created,
         :last_active,
         :description
     )""", {
-        'phone': phone, 'ip_addr': ip_addr, 'region': region, 'date_created': time.time(),
-        'last_active': time.time(), 'description': desc
+        'phone': phone, 'ip_addr': ip_addr, 'region': region, 'guid': guid,
+        'date_created': time.time(), 'last_active': time.time(), 'description': desc
     })
     return c.rowcount
 
 def delete_finished_cooldown(conn):
     """
     Delete records who have completed their cooldown time.
-    NOTE: Probably roll this into the delete_expired_records query
 
     :param conn: SQLite connection handle
     :returns: the amount of rows which were deleted
@@ -154,7 +158,7 @@ def update_active_time(conn, phone):
     Update the active time on a record. This occurs when a customer already in the cache
     gets a new start message.
     """
-    c = conn.execute("""
+    conn.execute("""
         UPDATE record
         SET last_active=:last_active
         WHERE phone=:phone
@@ -193,6 +197,7 @@ def select_manifest_records(conn, active_time):
             phone,
             ip_addr,
             region,
+            guid,
             description,
             last_active,
             date_created,
