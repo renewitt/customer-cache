@@ -66,3 +66,4 @@ venv.bak/
 # project files
 manifest.json
 config.yml
+output/

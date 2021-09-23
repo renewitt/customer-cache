@@ -13,9 +13,9 @@ def generate_customer_data():
     for idx in range(1000):
         customers.append({
             "region": fake.city(),
-            "company": fake.company(),
+            "description": fake.company(),
             "phone": fake.phone_number(),
-            "ip_address": fake.ipv4()
+            "ip_addr": fake.ipv4()
         })
     return customers
 
@@ -34,11 +34,16 @@ def publish_start(channel, headers):
     msg = amqp.Message(application_headers=headers)
     channel.basic_publish(msg, exchange="mpi", routing_key="start")
 
+def publish_stop(channel, headers):
+    print(f'Resending previous message.  Key: stop, Headers: {headers}')
+    msg = amqp.Message(application_headers=headers)
+    channel.basic_publish(msg, exchange="mpi", routing_key="stop")
+
 def run():
     """ Run the main loop. """
     customer_data = generate_customer_data()
 
-    with amqp.Connection('rabbitmq:5672') as c:
+    with amqp.Connection('localhost:5672') as c:
         ch = c.channel()
         args = {
             "alternate-exchange": "dead-letter"
@@ -57,7 +62,7 @@ def run():
             publish_order(ch, headers)
 
             # We don't get orders that often.
-            time.sleep(random.randint(1, 8))
+            time.sleep(random.randint(1, 3))
 
             # randomly publish some already published ones so
             # we can test cooldown works. This generates a lot of
@@ -65,6 +70,9 @@ def run():
             # have previously been stops.
             if '5' in headers["guid"]:
                 publish_start(ch, headers)
+
+            if '1' in headers["guid"]:
+                publish_stop(ch, headers)
 
 if __name__ == "__main__":
     run()

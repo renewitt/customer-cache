@@ -151,7 +151,6 @@ class Rabbit:
         This functions runs all the timers. The Timer class will only run the attached timer
         method if the timer is due.
         """
-        self.logger.info(f"Checking {len(self.timers)} timers")
         # we use list around the items(), to create a shallow, view copy of the timer dict,
         # and iterate over that instead of the dict itself. Due to the way the timers are
         # called, its possible we could be deleting a timer at the same time we were iterating
@@ -182,3 +181,13 @@ class Rabbit:
         if name in self.timers.keys():
             timer = self.timers.pop(name)
             self.logger.info(f'Deleted tracked timer {name}: {timer}')
+
+    def reject_message(self, error_log, delivery_tag):
+        """
+        Reject a message and send it to the dead-letter exchange.
+
+        :param error_log: The content of the error log message
+        :param delivery_tag: The delivery tag which identifies this message
+        """
+        self.consume_channel.basic_reject(delivery_tag, requeue=False)
+        self.logger.error(error_log)

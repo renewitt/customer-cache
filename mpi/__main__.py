@@ -1,6 +1,5 @@
 """ Initalise PI. """
 import yaml
-import redis
 
 import mpi.service
 import mpi.rabbit
@@ -32,24 +31,11 @@ def main():
         conf['consumer_bindings'],
     )
 
-    # This connection doesn't actually do anything until you run a command
-    # against it, which is why the flush() is here. Without this, you can't
-    # tell if you've actually connected to a redis instance or not. If we do
-    # actually want to keep the cache between service restarts we could replace
-    # with info() or similar.
-    cache = redis.Redis(
-        host=conf['redis_host'],
-        port=conf['redis_port'],
-        db=conf['redis_db'],
-    )
-    cache.flushdb()
-
     pi = mpi.service.Pi(
         rabbit,
-        cache,
-        conf['order_frequency'],
-        conf['order_size'],
+        conf['refresh_time'],
+        conf['manifest_size'],
         conf['cooldown_time'],
-        conf['expiry_time'],
+        conf['active_time'],
         )
     pi.run()

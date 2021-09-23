@@ -8,16 +8,10 @@ services:
         - 5672:5672
         # RabbitMQ Management GUI
         - 15672:15672
-  redis:
-    image: redis:latest
-    container_name: redis
-    ports:
-      - 6379:6379
-  generate-pi-data:
-    build: data/
-    restart: unless-stopped
-    image: generate-pi-data
-    container_name: generate-pi-data
-    depends_on:
-      - redis
-      - rabbitmq
+  # generate-pi-data:
+  #   build: data/
+  #   restart: unless-stopped
+  #   image: generate-pi-data
+  #   container_name: generate-pi-data
+  #   depends_on:
+  #     - rabbitmq

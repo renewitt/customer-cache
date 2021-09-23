@@ -6,8 +6,7 @@ setuptools.setup(
     description="Maintain a list of current customer orders and publish the current list.",
     install_requires=[
         "amqp",
-        "redis",
-        "pyyaml"
+        "pyyaml",
     ],
     packages=setuptools.find_packages(
         exclude=['tests']

@@ -1,3 +1,5 @@
+PI
+---------
 [x] Get project to basic installable
 [x] Split up functionality provided by other magic libraries so its easy to break up when we bring it in
 [ ] Update README for current config and install
@@ -9,10 +11,11 @@
 [x] Set up Makefile and `docker-compose` to spin up containers for Redis and Rabbit
 [ ] Clean up config by using argparse and config file
 [ ] Pass config options for containers on startup
-[ ] Figure out a sensible way to auth redis, plus how we can easily do this in containers
-    - I have gotten rid of this for now since we're just testing.
-    - In QA currently we have a redis instance which just has a password, but it's running on the same host.
-    - What would this look like on the PaaS?
-[ ] Figure out and document the best way to handle the caching.
-[ ] Write tests.
+[ ] Decide whether we want to publish an empty set of orders on startup, and how we'll handle service restarts.
+[ ] Figure out, implement and document the best way to handle the caching.
+[ ] Write tests
+
+Rabbit
+----
+[ ] Implement timers which clients can use to add customer timed callbacks 
 [ ] Introduce a max consume window by exiting consume after the timer expires
