@@ -101,18 +101,18 @@ class Pi:
 
     def generate_manifest(self):
         """ Generates the manifest to be published. """
-        # prune cache by removing expired records and sending eligible customers
-        # to cooldown
+        # prune cache by removing records who are past their allowed active time, or who
+        # have completed their cooldown
         self._prune_cache()
 
-        # Check how many active records remain after pruning. If we still have too many, we
-        # enforce a cooldown time.
+        # Check whether we need to enforce cooldown due to an oversized cache, or free some
+        # customers from cooldown if the cache is undersized.
         self._send_to_cooldown()
 
-        # If after pruning the cooldown check, we still have too many active records, we trim
-        # the list. The records are ordered from most recent date_created, so we select
-        # from the beginning of the list to the record max. This is because we assume the newest
-        # records are the most valuable, and the old ones may be near to expiry.
+        # If we still have too many active records, we trim the list. The records are ordered
+        # from most recent date_created, so we select from the beginning of the list to the
+        # record max. This is because we assume the newest records are the most valuable, and
+        # the old ones may be near to expiry.
 
         # We use date_created instead of last_active to avoid a situation where a customer
         # we regular receive starts for always appears to be new. Using last_active for
@@ -123,12 +123,14 @@ class Pi:
             if len(records) > self.manifest_size:
                 over_count = len(records) - self.manifest_size
                 self.logger.warning(
-                    f'Cache is still oversized after pruning. Ignoring {over_count} oldest records.')
-                # We don't need to do anything with the excluded records. Depending on their `tasked`
-                # status, they will either be deleted or sent to cooldown in the next prune.
+                    f'Cache is still oversized after pruning and enforcing cooldown. '
+                    f'Ignoring {over_count} oldest records.')
+                # We don't need to do anything with the excluded records, as they will either
+                # be expired or sent to cooldown next time this is run
                 records = records[:self.manifest_size]
 
-            # mark all these records as being being tasked
+            # mark all these records as being being tasked. If these have been previously tasked,
+            # the `tasked_time` will be overwritten.
             dbapi.update_to_tasked(conn, records)
             return records
 
@@ -151,19 +153,36 @@ class Pi:
         allowed limit, we can skip cooldown. If we are over the limit, customers who have
         already been tasked are eligible to be put into cooldown.
 
-        TODO: Figure out a solution in cases where we end up with a tiny manifest and loads
-        of people in cooldown. If this happens, we should release the cooldown early.
+        This method first prunes an oversized cache by sending all previously tasked customers
+        to cooldown, and then attempts to recover if the cache is undersize, by freeing recently
+        active customers from cooldown.
         """
         with self.conn as conn:
             eligible_records = dbapi.select_manifest_records(conn, self.active_time)
-            if len(eligible_records) <= self.manifest_size:
-                return
+            if len(eligible_records) > self.manifest_size:
+                self.logger.info(f'Cache is oversized. Sending customers to cooldown.')
+                # There is potential optimisations to be had here. Currently this could
+                # result in 90% of the cache being sent to cooldown. We could cooldown
+                # only the amount of records we need to drop below the manifest size,
+                # but these rules would be fairly arbitrary, so instead we just force them
+                # all into cooldown and release them if we have space AND we have received
+                # a start for them within the active window.
+                dbapi.update_to_cooldown(conn, self.cooldown_time)
 
-            self.logger.info(f'Cache is oversized. Sending customers to cooldown.')
-            # TODO: Implement better cooldown. This is not optimised in any way and could
-            # result in 90% of the cache being sent to cooldown. A better way to do this
-            # would be to ascertain how many less records we need, and send them to cooldown.
-            dbapi.update_records_with_cooldown(conn, self.cooldown_time)
+            # We reselect the records again, because if we hit the previous conditional,
+            # the eligible records have now changed and we want to run this to re-fill
+            # the cache if we were too heavy-handed with cooldown.
+            eligible_records = dbapi.select_manifest_records(conn, self.active_time)
+            if len(eligible_records) < self.manifest_size:
+                # Because we keep track of the `last_active` time for customers in the cache,
+                # we can tell which, if any, are currently active but in enforced cooldown.
+                # If our cache is below the allowed size, we can free these customers from
+                # cooldown in order to fill more slots. We don't really care if we free too
+                # many because we might just ignore a few of the oldest ones if we're still
+                # over size.
+                self.logger.info(
+                    f'Cache undersized. Freeing any recently seen customers from cooldown.')
+                dbapi.update_free_cooldown(conn, self.active_time)
 
     def on_start(self, phone, ip_addr, region, desc, guid):
         """

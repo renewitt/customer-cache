@@ -128,13 +128,13 @@ def delete_finished_cooldown(conn):
     c = conn.execute("""
         DELETE
         FROM record
-        WHERE cooldown_expiry <= strftime('%s','now')
-    """, {})
+        WHERE cooldown_expiry <= :now
+    """, {'now': time.time()})
     return c.rowcount
 
 def delete_expired_records(conn, active_time):
     """
-    Delete records which are past their expiry time, and have never been tasked.
+    Delete records which are past their expiry time, and are not in cooldown.
 
     NOTE: We should probably add some safety window in here. If they have under
     5 seconds left, they should probably be regarded as expired, as by the time
@@ -147,8 +147,7 @@ def delete_expired_records(conn, active_time):
     c = conn.execute("""
         DELETE
         FROM record
-        WHERE tasked_time IS FALSE
-        AND cooldown_expiry IS NULL
+        WHERE cooldown_expiry IS NULL
         AND (last_active + :active_time) <= :now
     """, {'active_time': active_time, 'now': time.time()})
     return c.rowcount
@@ -188,7 +187,7 @@ def select_manifest_records(conn, active_time):
     Select all the records which are eligible to be included in a manifest.
 
     :param conn: SQLite connection handle
-    :param active_time: the amount of time records are active after they were last updated
+    :param active_time: seconds records are considered active for, after they were last updated
 
     :returns: a list of dictionaries, or an empty list
     """
@@ -223,7 +222,7 @@ def update_to_tasked(conn, records):
         WHERE phone = :phone
     """, records)
 
-def update_records_with_cooldown(conn, cooldown_time):
+def update_to_cooldown(conn, cooldown_time):
     """
     Update all the records which have a tasked_time, and send them to cooldown. Cooldown means they
     cannot be included as part of a manifest, and expires when the cooldown time has elapsed, or they
@@ -237,3 +236,18 @@ def update_records_with_cooldown(conn, cooldown_time):
         SET cooldown_expiry = :cooldown_expiry
         WHERE tasked_time IS NOT NULL
     """, {'cooldown_expiry': time.time() + cooldown_time})
+
+def update_free_cooldown(conn, active_time):
+    """
+    Free customers from cooldown if they have a `cooldown_expiry` set and their active
+    window (`last_active` + active_time) is later than now.
+
+    :param conn: SQLite connection handle
+    :param active_time: seconds records are considered active for, after they were last updated
+    """
+    conn.execute("""
+        UPDATE record
+        SET cooldown_expiry = NULL
+        WHERE cooldown_expiry IS NOT NULL
+        AND last_active + :active_time > :now
+    """, {'active_time': active_time, 'now': time.time()})
