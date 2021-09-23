@@ -80,7 +80,8 @@ class Pi:
 
         phone = headers['phone']
         ip_addr = headers['ip_addr']
-        desc = headers['description']
+        # We've been bitten by empty descriptions in the past
+        desc = headers['description'] or 'UNKNOWN'
         region = headers['region']
         guid = headers['guid']
 

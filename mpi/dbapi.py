@@ -41,6 +41,10 @@ def create_cache(conn):
     Create the table which will be used to store the customer records. SQLite
     stores booleans as integers, and supports UNIX timestamps.
 
+    We mostly generate our own timestamps using `time.time()` instead of using
+    SQLite's `strftime` because it doesn't include millseconds, which makes it
+    impossible to accurately order records inserted or modified in quick succession.
+
     :param conn: SQLite connection handle
     """
     conn.execute("""
@@ -212,6 +216,9 @@ def select_manifest_records(conn, active_time):
 def update_to_tasked(conn, records):
     """
     Mark all these records as tasked so we can keep track of which records have been published.
+    This is the only function where we use the SQLite strftime, because tasked_time is never
+    compared between records, and is mostly used as a boolean test. Decided to store it as a
+    timestamp only for potentially easier debugging so it doesn't matter there's no milliseconds.
 
     :param conn: SQLite connection handle
     :param records: a list of dictionaries with customer datas
