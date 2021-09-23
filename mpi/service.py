@@ -19,7 +19,8 @@ class CacheError(Exception):
 
 class Pi:
     def __init__(
-                self, rabbit, refresh_time, manifest_size, cooldown_time, active_time):
+                self, rabbit, refresh_time, manifest_size, cooldown_time, active_time,
+                publish_exchange, publish_key):
         """
         Initialise and configure the instance.
 
@@ -28,6 +29,8 @@ class Pi:
         :param manifest_size: maximum amount of orders allowed in a set
         :param cooldown_time: seconds the customer must remain in cooldown
         :param expiry_time: how many seconds each start is valid for
+        :param publish_exchange: exchange for published MPI data
+        :param publish_key: routing key used to publish manifests
         """
         self.rabbit = rabbit
 
@@ -35,6 +38,9 @@ class Pi:
         self.manifest_size = manifest_size
         self.cooldown_time = cooldown_time
         self.active_time = active_time
+
+        self.publish_exchange = publish_exchange
+        self.publish_key = publish_key
 
         self.logger = logging.getLogger("PI")
         self.conn = dbapi.connect()
@@ -47,6 +53,7 @@ class Pi:
         dbapi.create_cache(self.conn)
 
         self.rabbit.init_consumer()
+        self.rabbit.init_publisher(self.publish_exchange)
         # Add a timer to our RabbitMQ consumer. When the timer expires,
         # the method passed into this function will be called.
         self.rabbit.add_timer(TIMER, self.refresh_time, self.publish_manifest)
@@ -96,8 +103,9 @@ class Pi:
         """
         manifest = self.generate_manifest()
         self.logger.info(f'Publishing manifest with {len(manifest)} records.')
-        with open(f'output/manifest_{time.time()}.json', 'w') as f:
-            f.write(json.dumps(manifest, indent=2))
+        data = json.dumps(manifest, indent=2)
+        headers = {'source': 'mpi'}
+        self.rabbit.publish(self.publish_exchange, headers, data, self.publish_key)
 
     def generate_manifest(self):
         """ Generates the manifest to be published. """
@@ -141,10 +149,10 @@ class Pi:
         """
         with self.conn as conn:
             expired = dbapi.delete_expired_records(conn, self.active_time)
-            self.logger.info(f'Pruned {expired} expired records from the cache.')
+            self.logger.debug(f'Pruned {expired} expired records from the cache.')
 
             cooldown_finished = dbapi.delete_finished_cooldown(conn)
-            self.logger.info(f'Pruned {cooldown_finished} records who have completed cooldown.')
+            self.logger.debug(f'Pruned {cooldown_finished} records who have completed cooldown.')
 
     def _send_to_cooldown(self):
         """
@@ -180,7 +188,7 @@ class Pi:
                 # cooldown in order to fill more slots. We don't really care if we free too
                 # many because we might just ignore a few of the oldest ones if we're still
                 # over size.
-                self.logger.info(
+                self.logger.debug(
                     f'Cache undersized. Freeing any recently seen customers from cooldown.')
                 dbapi.update_free_cooldown(conn, self.active_time)
 

@@ -51,6 +51,7 @@ class Rabbit:
 
         # AMQP connections/channels
         self.conn = None
+        self.publish_channel = None
         self.consume_channel = None
 
         # service config
@@ -72,30 +73,38 @@ class Rabbit:
         conn.connect()
         return conn
 
+    def init_publisher(self, exchange):
+        """ Initalise a publish channel. """
+        if self.conn is None or not self.conn.connected:
+            self.conn = self._connect()
+
+        if self.publish_channel is None:
+            self.publish_channel = self.conn.channel()
+
+        self._declare_exchange(self.consume_channel, exchange)
+
     def init_consumer(self):
-        """ Initialise consume connection. """
+        """ Initialise consume channel. """
         if self.conn is None or not self.conn.connected:
             self.conn = self._connect()
 
         if self.consume_channel is None:
             self.consume_channel = self.conn.channel()
 
-        self._declare_exchange()
+        exchange = self.consumer_bindings['exchange']
+        self._declare_exchange(self.consume_channel, exchange)
         self._declare_queue_bind()
 
-    def _declare_exchange(self):
-        exchange = self.consumer_bindings['exchange']
-        args = {
-            "alternate-exchange": "dead-letter"
-        }
+    def _declare_exchange(self, channel, exchange):
 
-        self.consume_channel.exchange_declare(
+        channel.exchange_declare(
             exchange,       # exchange name
             "direct",       # exchange type,
             durable=True,
             auto_delete=False,
-            arguments=args,
-        )
+            arguments={
+                "alternate-exchange": "dead-letter"
+            })
 
     def _declare_queue_bind(self):
         """ Declare queue for consuming. """
@@ -191,3 +200,15 @@ class Rabbit:
         """
         self.consume_channel.basic_reject(delivery_tag, requeue=False)
         self.logger.error(error_log)
+
+    def publish(self, exchange, headers, body, routing_key):
+        """
+        Publish a message.
+
+        :param exchange: RabbitMQ exchange to publish to
+        :param headers: RabbitMQ message headers
+        :param body: RabbitMQ message body
+        :param routing_key: key to use for routing this message
+        """
+        msg = amqp.Message(body=body, application_headers=headers)
+        self.publish_channel.basic_publish(msg, exchange=exchange, routing_key=routing_key)

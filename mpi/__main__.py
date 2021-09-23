@@ -37,5 +37,7 @@ def main():
         conf['manifest_size'],
         conf['cooldown_time'],
         conf['active_time'],
+        conf['publish_exchange'],
+        conf['publish_key'],
         )
     pi.run()
