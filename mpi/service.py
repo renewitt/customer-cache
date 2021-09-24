@@ -1,7 +1,7 @@
 """ Initalises the service class and storage cache. """
-import time
 import json
 import logging
+import datetime
 
 import mpi.dbapi as dbapi
 
@@ -49,64 +49,84 @@ class Pi:
         """ Connect to RabbitMQ and set timers. """
         self.logger.info("Starting up PI")
 
-        # Create the data cache
-        dbapi.create_cache(self.conn)
+        try:
+            dbapi.create_cache(self.conn)
 
-        self.rabbit.init_consumer()
-        self.rabbit.init_publisher(self.publish_exchange)
-        # Add a timer to our RabbitMQ consumer. When the timer expires,
-        # the method passed into this function will be called.
-        self.rabbit.add_timer(TIMER, self.refresh_time, self.publish_manifest)
-        self.rabbit.consume(self.message_callback)
+            self.rabbit.init_consumer()
+            self.rabbit.init_publisher(self.publish_exchange)
+            # Add a timer to our RabbitMQ consumer. Whenever the timer expires,
+            # the method passed into this function will be called.
+            self.rabbit.add_timer(TIMER, self.refresh_time, self.publish_manifest)
+            self.rabbit.consume(self.message_callback)
+        finally:
+            self.stop()
 
     def stop(self):
         """ Shut down PI. """
         self.logger.info("Stopping PI")
-        # Clean up the timer we added before closing the RabbitMQ connection
         self.rabbit.delete_timer(TIMER)
         self.rabbit.stop()
         self.conn.close()
 
     def message_callback(self, message):
-        """ Callback to pass to RabbitMQ consume. """
+        """
+        Callback to pass to RabbitMQ consume.
+
+        Any error raised in here that isn't to do with RabbitMQ data should cause the
+        application to crash. If something weird is happening with the cache, we should
+        err on the side of caution, crash and allow the end-client to fall back to disaster
+        recovery instead of attempting to recover and potentially sending bad data. The
+        service should be on auto-restart, so the result of the crash is the cache getting
+        dumped on crash, service restarting and us starting again.
+
+        NOTE: We might have to think about what that would mean if it happened repeatedly.
+        """
         headers = message.application_headers
         routing_key = message.delivery_info['routing_key']
+        tag = message.delivery_tag
 
         # we can only process start or stop beyond this point, so reject other messages
         if routing_key not in [START, STOP]:
             self.rabbit.reject_message(
-                f'Message has unexpected routing key {routing_key}, rejecting message',
-                message.delivery_tag)
+                f"Message has unexpected routing key '{routing_key}', rejecting message", tag)
+            return
 
-        phone = headers['phone']
-        ip_addr = headers['ip_addr']
-        # We've been bitten by empty descriptions in the past
-        desc = headers['description'] or 'UNKNOWN'
-        region = headers['region']
-        guid = headers['guid']
+        try:
+            phone = headers['phone']
+            ip_addr = headers['ip_addr']
+            # We've been bitten by empty descriptions in the past
+            desc = headers['description'] or 'UNKNOWN'
+            region = headers['region']
+            guid = headers['guid']
+        except KeyError:
+            # If this message has bad headers, reject it and carry on
+            self.rabbit.reject_message(
+                f'Message headers were improperly formed {headers}', tag)
+            return
 
         if routing_key == START:
             self.on_start(phone, ip_addr, desc, region, guid)
-            self.rabbit.consume_channel.basic_ack(message.delivery_tag)
+            self.rabbit.consume_channel.basic_ack(tag)
             return
 
         if routing_key == STOP:
             self.on_stop(phone)
-            self.rabbit.consume_channel.basic_ack(message.delivery_tag)
+            self.rabbit.consume_channel.basic_ack(tag)
             return
 
     def publish_manifest(self):
         """
         This method exports and publishes the current manifest. This function is
         called by a timer instance attached to MRabbit.
-
-        TODO: Add an actual publish here instead of writing out to a file.
         """
         manifest = self.generate_manifest()
-        self.logger.info(f'Publishing manifest with {len(manifest)} records.')
         data = json.dumps(manifest, indent=2)
-        headers = {'source': 'mpi'}
+        headers = {
+            'source': 'mpi',
+            'published_at': datetime.datetime.isoformat(datetime.datetime.now()),
+            'records': len(manifest)}
         self.rabbit.publish(self.publish_exchange, headers, data, self.publish_key)
+        self.logger.info(f'Published manifest with {len(manifest)} records.')
 
     def generate_manifest(self):
         """ Generates the manifest to be published. """

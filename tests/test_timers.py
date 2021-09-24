@@ -1,6 +1,4 @@
 """ Tests the timer functionality of mrabbit. """
-from _pytest.python_api import raises
-import pytest
 import datetime
 
 import mpi.rabbit as rabbit
