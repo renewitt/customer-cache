@@ -8,9 +8,7 @@ MPI
     - [Persistence](#persistence)
     - [Publish Delay or Service Failure](#publish-delay-or-service-failure)
   - [Running the Project](#running-the-project)
-    - [Configure](#configure)
-    - [Installing](#installing)
-    - [Run](#run)
+    - [Installing + Running](#installing--running)
     - [Tests](#tests)
 
 ## Overview
@@ -52,25 +50,30 @@ PI currently does not persist any data between sessions. The cache is built and 
 The client at the remote destination must handle unexpected delays in receiving the order list. It is responsible for clearing the current orders if updates are not received from PI within its allowed time window.
 
 ## Running the Project
-### Configure
-You do not have to do this step, if you intend to use the Docker environment.
+
+### Installing + Running
 ```bash
-cp config.yml.example config.yml 
-```
+# Start up the Docker environment which spins up a RabbitMQ container and starts the
+# publisher sending messages for PI to consume. The publisher is on auto restart because
+# RabbitMQ takes a while to start up.
+make docker-up
 
-### Installing
-```
-# creates virtual environment and installs package
+# set up configuration
+cp config.yml.example config.yml
+
+# Install mpi.
 make install
-```
 
-### Run
-```
-mpi
+# wait for RabbitMQ to have started. You can view the `docker-up` logs, or access the GUI
+# at http://localhost:15672
+source venv/bin/activate
+mpi 
+
+# clean up docker containers. 
+make docker-down
 ```
 
 ### Tests
-To run the tests:
-```
+```bash
 make test
 ```

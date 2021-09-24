@@ -24,8 +24,8 @@ test: $(VENV)/bin/activate
 dist:
 	python setup.py sdist
 
-run:
+docker-up:
 	docker-compose up
 
-stop:
+docker-down:
 	docker-compose down

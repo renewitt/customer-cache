@@ -32,14 +32,14 @@ def run():
     customer_data = generate_customer_data()
     started = []
 
-    with amqp.Connection('localhost:5672') as c:
+    with amqp.Connection('rabbitmq:5672') as c:
         ch = c.channel()
         args = {
             "alternate-exchange": "dead-letter"
         }
         ch.exchange_declare(
             "mpi",       # exchange name
-            "direct",   # exchange type,
+            "direct",    # exchange type,
             durable=True,
             auto_delete=False,
             arguments=args,

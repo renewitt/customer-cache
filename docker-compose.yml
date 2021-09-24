@@ -8,10 +8,10 @@ services:
         - 5672:5672
         # RabbitMQ Management GUI
         - 15672:15672
-  # generate-pi-data:
-  #   build: data/
-  #   restart: unless-stopped
-  #   image: generate-pi-data
-  #   container_name: generate-pi-data
-  #   depends_on:
-  #     - rabbitmq
+  generate-pi-data:
+    build: data/
+    restart: unless-stopped
+    image: generate-pi-data
+    container_name: generate-pi-data
+    depends_on:
+      - rabbitmq
