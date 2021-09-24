@@ -13,10 +13,6 @@ START = 'start'
 STOP = 'stop'
 TIMER = 'pi_manifest'
 
-class CacheError(Exception):
-    """ Exception raised by PI when an error occurs when manipulating the cache. """
-    pass
-
 class Pi:
     def __init__(
                 self, rabbit, refresh_time, manifest_size, cooldown_time, active_time,
