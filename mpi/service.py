@@ -89,15 +89,15 @@ class Pi:
 
         try:
             phone = headers['phone']
-            ip_addr = headers['ip_addr']
+            ip_addr = headers['ip_address']
             # We've been bitten by empty descriptions in the past
             desc = headers['description'] or 'UNKNOWN'
             region = headers['region']
             guid = headers['guid']
-        except KeyError:
+        except KeyError as exp:
             # If this message has bad headers, reject it and carry on
             self.rabbit.reject_message(
-                f'Message headers were improperly formed {headers}', tag)
+                f'Message headers were improperly formed {headers}, KeyError: {exp}', tag)
             return
 
         if routing_key == START:
