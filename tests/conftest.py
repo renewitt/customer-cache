@@ -30,7 +30,7 @@ def gen_headers():
         "region": fake.city(),
         "description": fake.company(),
         "phone": fake.phone_number(),
-        "ip_addr": fake.ipv4(),
+        "ip_address": fake.ipv4(),
         "guid": f"{uuid.uuid4()}"
     }
     return headers
